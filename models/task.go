@@ -1,6 +1,10 @@
 package models
 
-import "github.com/jinzhu/gorm"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 const (
 	Pending   string = "Pending"
@@ -10,9 +14,12 @@ const (
 )
 
 type Task struct {
-	gorm.Model
-	Title  string `json:"title"`
-	Status string `json:"status"`
-	UserID uint   `json:"user_id"`
-	User   User   `json:"user"` // Define the foreign key relationship
+	ID        uuid.UUID `gorm:"type:uuid;primary_key;" json:"id"`
+	Title     string    `json:"title"`
+	Status    string    `json:"status"`
+	UserID    uuid.UUID `json:"user_id"`
+	User      User      `gorm:"foreignkey:UserID" json:"user"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	DeletedAt time.Time `json:"deleted_at"`
 }

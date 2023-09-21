@@ -12,24 +12,28 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Jost&family=Urbanist:wght@500&display=swap" rel="stylesheet">
     <style>
-         body {
+        body {
             margin: 0;
             padding: 0;
             background: linear-gradient(to bottom, #52042e, #3cd6e7);
-            color: #2286ae; /* Text color on the gradient background */
+            color: #2286ae;
+            /* Text color on the gradient background */
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 100vh; /* Ensure the background covers the entire viewport */
+            min-height: 100vh;
+            /* Ensure the background covers the entire viewport */
             font-family: 'Jost', sans-serif;
             font-family: 'Urbanist', sans-serif;
         }
-        a{
+
+        a {
             text-decoration: none;
             color: #fafafa;
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="row">
@@ -46,7 +50,7 @@
                                         <!-- Form for adding a new task -->
                                         <form
                                             class="row row-cols-lg-auto g-3 justify-content-center align-items-center mb-4 pb-2"
-                                            id="addTaskForm" method="POST" >
+                                            id="addTaskForm" method="POST">
                                             <div class="col-12">
                                                 <div class="form-outline">
                                                     <input type="text" id="taskName" class="form-control"
@@ -55,16 +59,14 @@
                                             </div>
 
                                             <div class="col-12">
-                                                <form method="POST" action="http:localhost:8080/task/create">
-                                                    <!-- Form fields go here -->
-                                                    <button type="submit" class="btn btn-primary">Save</button>
-                                                </form>
-                                                
+                                                <button type="submit" class="btn btn-primary"
+                                                    id="saveTaskBtn">Save</button>
                                             </div>
                                         </form>
 
                                         <!-- Button to get tasks -->
-                                        <button type="button" class="btn btn-danger" id="getTasksBtn"><a href="http://localhost:8080/tasks">Get tasks</a></button>
+                                        <button type="button" class="btn btn-danger" id="getTasksBtn"><a
+                                                href="http://localhost:8080/tasks">Get tasks</a></button>
 
                                         <!-- Table for displaying tasks -->
                                         <table class="table mb-4" id="taskTable">
@@ -97,8 +99,36 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         $(document).ready(function () {
-            // JavaScript code for handling form submission and data retrieval will go here
+            // Check if a token is available in the request payload
+            var token = localStorage.getItem('token'); // Assuming you store the token in localStorage
+
+            // If token is not available, redirect to /home
+            if (!token) {
+                window.location.href = "/home";
+                return;
+            }
+
+            // If token is available, handle form submission
+            $('#addTaskForm').on('submit', function (event) {
+                event.preventDefault(); // Prevent the default form submission
+
+                // Get the form data
+                var taskName = $('#taskName').val();
+
+                // Perform further processing, e.g., sending data to the server
+                // ...
+
+                // Reset the form after processing
+                $('#taskName').val('');
+            });
+
+            // Handle other actions such as retrieving tasks
+            $('#getTasksBtn').on('click', function () {
+                // Perform the action to retrieve tasks
+                // ...
+            });
         });
+
     </script>
 </body>
 
