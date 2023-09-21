@@ -102,9 +102,9 @@
             // Check if a token is available in the request payload
             var token = localStorage.getItem('token'); // Assuming you store the token in localStorage
 
-            // If token is not available, redirect to /home
+            // If token is not available, redirect to /
             if (!token) {
-                window.location.href = "/home";
+                window.location.href = "/";
                 return;
             }
 

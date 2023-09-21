@@ -23,6 +23,12 @@ var (
 	jwtSecret []byte
 )
 
+// Define a struct for the login request data
+type LoginRequest struct {
+	Email    string `json:"email" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
+
 func init() {
 	// Load environment variables from .env file
 	err := godotenv.Load()
@@ -54,7 +60,7 @@ func main() {
 	r.GET("/login", LoginPage)
 	r.POST("/register", Register)
 	r.POST("/login", Login)
-	r.POST("/todo", TodoPage)
+	r.GET("/todo", TodoPage)
 
 	r.POST("/tasks", GetAllTask)
 	r.POST("/task/create", CreateTask)
@@ -107,12 +113,12 @@ func LoginPage(c *gin.Context) {
 }
 
 func TodoPage(c *gin.Context) {
-	// Check if a token is available in the request payload
-	token := c.PostForm("token") // Assuming the token is sent as a POST parameter
+	// Fetch the token from the URL query parameters
+	token := c.DefaultQuery("token", "")
 
 	if token == "" {
 		// Token is not available, redirect to /home
-		c.Redirect(http.StatusSeeOther, "/home")
+		c.Redirect(http.StatusSeeOther, "/")
 		return
 	}
 
@@ -265,7 +271,7 @@ func getUserByEmail(email string) (*models.User, error) {
 	if err := db.Where("email = ?", email).First(user).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			// Return a custom error if the user is not found
-			return nil, errors.New("User not found")
+			return nil, errors.New("user not found")
 		}
 		// Return the error for any other database issues
 		return nil, err
@@ -276,40 +282,82 @@ func getUserByEmail(email string) (*models.User, error) {
 }
 
 func Login(c *gin.Context) {
-	// Define a struct to parse the JSON request body
-	type LoginRequest struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
-	// Parse the JSON request body into a LoginRequest struct
 	var loginRequest LoginRequest
-	if err := c.BindJSON(&loginRequest); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+
+	// Parse the request data based on content type
+	if err := parseLoginRequest(c, &loginRequest); err != nil {
 		return
 	}
 
-	// Retrieve user from the database by email
-	user, err := getUserByEmail(loginRequest.Email)
+	// Check the credentials and get the user
+	user, err := checkCredentials(loginRequest.Email, loginRequest.Password)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "No user exists with this email"})
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "failed", "error": err.Error()})
 		return
+	}
+
+	// Generate a JWT token
+	token, err := generateJWTToken(user.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "failed", "error": "Failed to generate JWT token."})
+		return
+	}
+
+	log.Println("success: JWT token generated")
+	log.Println("token: ", token)
+
+	// Redirect based on success
+	// if token != "" {
+	// 	c.Redirect(http.StatusSeeOther, "/todo?token="+token) // Redirect to /todo with the token
+	// } else {
+	// 	c.Redirect(http.StatusSeeOther, "/home") // Redirect to /home
+	// }
+	c.JSON(http.StatusOK, gin.H{"token": token})
+}
+
+// parseLoginRequest parses the login request data based on content type
+func parseLoginRequest(c *gin.Context, loginRequest *LoginRequest) error {
+	contentType := c.Request.Header.Get("Content-Type")
+
+	switch contentType {
+	case "application/json":
+		// Parse JSON request body
+		if err := c.ShouldBindJSON(loginRequest); err != nil {
+			log.Println("error: failed to bind JSON request data")
+			c.JSON(http.StatusBadRequest, gin.H{"status": "failed", "error": "Invalid request"})
+			return err
+		}
+	case "application/x-www-form-urlencoded":
+		// Parse form-encoded data
+		if err := c.ShouldBind(loginRequest); err != nil {
+			log.Println("error: failed to bind form-encoded data")
+			c.JSON(http.StatusBadRequest, gin.H{"status": "failed", "error": "Invalid request"})
+			return err
+		}
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"status": "failed", "error": "Invalid content type"})
+		return nil
+	}
+
+	return nil
+}
+
+// checkCredentials checks the user's credentials and returns the user if valid
+func checkCredentials(email, password string) (*models.User, error) {
+	// Replace this with your database lookup logic to retrieve the user by email
+	user, err := getUserByEmail(email)
+	if err != nil {
+		return &models.User{}, err
 	}
 
 	// Compare the password from the request with the hashed password from the database
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginRequest.Password)); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Password is incorrect"})
-		return
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		log.Println("error : password is incorrect")
+		log.Println("error : failed to compare hash password with provided password")
+		return &models.User{}, err
 	}
 
-	// If everything is okay, generate a JWT token based on UserID (UUID)
-	token, err := generateJWTToken(user.ID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate JWT token"})
-		return
-	}
-
-	// Send the JWT token to the frontend in the response
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	return user, nil
 }
 
 func generateJWTToken(userID uuid.UUID) (string, error) {
