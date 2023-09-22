@@ -29,6 +29,14 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
+// CustomClaims represents custom claims in the JWT token.
+type CustomClaims struct {
+	UserID uuid.UUID `json:"user_id"`
+	Email  string    `json:"email"`
+	// Add other claims as needed
+	jwt.StandardClaims
+}
+
 func init() {
 	// Load environment variables from .env file
 	err := godotenv.Load()
@@ -62,7 +70,7 @@ func main() {
 	r.POST("/login", Login)
 	r.GET("/todo", TodoPage)
 
-	r.POST("/tasks", GetAllTask)
+	r.GET("/tasks", GetAllTasks)
 	r.POST("/task/create", CreateTask)
 	r.POST("/task/update/{id}", UpdateTask)
 	r.POST("/task/delete/{id}", DeleteTask)
@@ -75,36 +83,15 @@ func main() {
 
 func HomePage(c *gin.Context) {
 	// Check if a token is present in the request
-	tokenString, exists := c.Get("token")
-	if !exists {
+	tokenString := c.Query("token")
+	if tokenString == "" {
 		// Token is not present, render the "home" template
 		render.RenderTemplate(c, "home", nil)
 		return
 	}
 
-	// Parse and validate the JWT token
-	token, err := jwt.Parse(tokenString.(string), func(token *jwt.Token) (interface{}, error) {
-		// Replace with your JWT secret key
-		return []byte("your-secret-key"), nil
-	})
-
-	if err != nil || !token.Valid {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-		return
-	}
-
-	// Token is valid, proceed with authenticated user actions
-
-	// Fetch tasks for the user (you will need to extract user ID from the token)
-	userID := getUserIdFromToken(token)
-	tasks, err := GetTasksByUserID(userID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tasks"})
-		return
-	}
-
 	// Render the "todo" template with tasks
-	render.RenderTemplate(c, "todo", tasks)
+	render.RenderTemplate(c, "todo", nil)
 }
 
 func LoginPage(c *gin.Context) {
@@ -192,19 +179,88 @@ func hashPassword(password string) ([]byte, error) {
 }
 
 func CreateTask(c *gin.Context) {
+	// Declare a variable to hold the task data
 	var task models.Task
+
+	// Check if the JSON data in the request body can be bound to the task struct
 	if err := c.ShouldBindJSON(&task); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Create the task
+	// Extract the token from the URL query parameters
+	token := c.Query("token")
+	if token == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Token is missing"})
+		return
+	}
+
+	// Get the user from the token (You may need to implement this logic)
+	user, err := GetUserFromToken(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		return
+	}
+	// Assuming you have extracted the user's ID from the token correctly
+	log.Println("User from token:", user.Email)
+
+	// Set the user ID in the task
+	task.UserID = user.ID
+
+	// Generate a UUID for the task
+	task.ID = uuid.New()
+
+	// Create the task in the database
 	if err := db.Create(&task).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
 		return
 	}
 
+	// Return the created task with a 201 status code
 	c.JSON(http.StatusCreated, task)
+}
+
+func GetAllTasks(c *gin.Context) {
+	// Extract the token from the URL query parameters
+	token := c.Query("token")
+	if token == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "token is missing"})
+		return
+	}
+
+	// Get the user ID from the token using your GetUserFromToken function
+	user, err := GetUserFromToken(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		return
+	}
+
+	// Retrieve tasks associated with the user
+	var tasks []models.Task
+	if err := db.Where("user_id = ?", user.ID).Find(&tasks).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve tasks"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": tasks})
+}
+
+func getUserByEmail(email string) (*models.User, error) {
+	// Create a new User instance to store the result
+	user := &models.User{}
+
+	// Query the database to find the user by email
+	if err := db.Where("email = ?", email).First(user).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// Return a custom error if the user is not found
+			return nil, errors.New("user not found")
+		}
+		// Return the error for any other database issues
+		return nil, err
+	}
+
+	// Return the user object and nil error if successful
+	return user, nil
 }
 
 func UpdateTask(c *gin.Context) {
@@ -243,42 +299,6 @@ func DeleteTask(c *gin.Context) {
 	db.Delete(&task)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Task deleted successfully"})
-}
-
-func GetAllTask(c *gin.Context) {
-	var tasks []models.Task
-	// TODO: Fetch tasks from your PostgreSQL database using Gorm
-	// For example:
-	// db.Find(&tasks)
-
-	// Return the tasks as a JSON response
-	c.JSON(http.StatusFound, gin.H{"tasks": tasks})
-}
-
-func GetTasksByUserID(userID uint) ([]models.Task, error) {
-	var tasks []models.Task
-	if err := db.Where("user_id = ?", userID).Find(&tasks).Error; err != nil {
-		return nil, err
-	}
-	return tasks, nil
-}
-
-func getUserByEmail(email string) (*models.User, error) {
-	// Create a new User instance to store the result
-	user := &models.User{}
-
-	// Query the database to find the user by email
-	if err := db.Where("email = ?", email).First(user).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			// Return a custom error if the user is not found
-			return nil, errors.New("user not found")
-		}
-		// Return the error for any other database issues
-		return nil, err
-	}
-
-	// Return the user object and nil error if successful
-	return user, nil
 }
 
 func Login(c *gin.Context) {
@@ -349,14 +369,12 @@ func checkCredentials(email, password string) (*models.User, error) {
 	if err != nil {
 		return &models.User{}, err
 	}
-
 	// Compare the password from the request with the hashed password from the database
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		log.Println("error : password is incorrect")
 		log.Println("error : failed to compare hash password with provided password")
 		return &models.User{}, err
 	}
-
 	return user, nil
 }
 
@@ -376,9 +394,53 @@ func generateJWTToken(userID uuid.UUID) (string, error) {
 	return tokenString, nil
 }
 
-func getUserIdFromToken(token *jwt.Token) uint {
-	claims := token.Claims.(jwt.MapClaims)
-	// Extract the user ID from the token claims
-	userID, _ := claims["user_id"].(uint)
-	return userID
+// GetUserFromToken extracts user information from a JWT token.
+func GetUserFromToken(tokenString string) (*models.User, error) {
+	// Parse the JWT token
+	claims, err := parseToken(tokenString)
+	if err != nil {
+		return nil, err
+	}
+
+	// Assuming you have a User struct in your application
+	user := &models.User{
+		ID:    claims.UserID,
+		Email: claims.Email,
+		// Add other user information as needed
+	}
+
+	return user, nil
+}
+
+// CheckTokenValidity checks if a JWT token is valid.
+func CheckTokenValidity(tokenString string) error {
+	// Parse the JWT token
+	_, err := parseToken(tokenString)
+	return err
+}
+
+func parseToken(tokenString string) (*CustomClaims, error) {
+	// Define the JWT secret key (you should securely store this)
+	secretKey := []byte(os.Getenv("JWT_SECRET"))
+
+	// Parse the JWT token
+	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return secretKey, nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if the token is valid
+	if !token.Valid {
+		return nil, errors.New("invalid token")
+	}
+
+	// Extract custom claims
+	if claims, ok := token.Claims.(*CustomClaims); ok {
+		return claims, nil
+	}
+
+	return nil, errors.New("failed to extract claims from token")
 }

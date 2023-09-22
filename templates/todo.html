@@ -44,32 +44,34 @@
                             <div class="col col-lg-9 col-xl-7">
                                 <div class="card rounded-3">
                                     <div class="card-body p-4">
-
+                                        <!-- Title Section -->
                                         <h4 class="text-center my-3 pb-3">To Do App</h4>
 
-                                        <!-- Form for adding a new task -->
-                                        <form
-                                            class="row row-cols-lg-auto g-3 justify-content-center align-items-center mb-4 pb-2"
-                                            id="addTaskForm" method="POST">
+                                        <!-- Add Task Form -->
+                                        <form class="row g-3" id="addTaskForm">
                                             <div class="col-12">
                                                 <div class="form-outline">
-                                                    <input type="text" id="taskName" class="form-control"
-                                                        placeholder="Enter a task here" name="taskName" required />
+                                                    <input type="text" id="title" class="form-control"
+                                                        placeholder="Enter a task here" name="title" required />
                                                 </div>
                                             </div>
-
                                             <div class="col-12">
-                                                <button type="submit" class="btn btn-primary"
-                                                    id="saveTaskBtn">Save</button>
+                                                <button type="button" class="btn btn-success"
+                                                    id="saveTaskBtn">Create</button>
+                                            </div>
+                                            <div class="col-12">
+                                                <div id="feedbackMessage" class="text-danger"></div>
                                             </div>
                                         </form>
 
-                                        <!-- Button to get tasks -->
-                                        <button type="button" class="btn btn-danger" id="getTasksBtn"><a
-                                                href="http://localhost:8080/tasks">Get tasks</a></button>
+                                        <!-- Get Tasks Button -->
+                                        <div class="text-center mt-4">
+                                            <button type="button" class="btn btn-warning" id="getTasksBtn">Get all
+                                                tasks</button>
+                                        </div>
 
-                                        <!-- Table for displaying tasks -->
-                                        <table class="table mb-4" id="taskTable">
+                                        <!-- Table for Displaying Tasks -->
+                                        <table class="table mt-4" id="taskTable">
                                             <thead>
                                                 <tr>
                                                     <th scope="col">No.</th>
@@ -82,7 +84,6 @@
                                                 <!-- Task rows will be inserted here dynamically -->
                                             </tbody>
                                         </table>
-
                                     </div>
                                 </div>
                             </div>
@@ -92,44 +93,149 @@
             </div>
         </div>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
         crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
+        // Function to extract a query parameter from the URL
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+        //     // Function to fetch tasks and display them
+        //     function fetchAndDisplayTasks(token) {
+        //         const taskTable = document.getElementById('taskTable').querySelector('tbody');
+        //         taskTable.innerHTML = ''; // Clear the existing table rows
+
+        //         $.ajax({
+        //             url: `http://localhost:8080/tasks?token=${token}`,
+        //             method: 'GET',
+        //             headers: {
+        //                 'Authorization': `Bearer ${token}`
+        //             },
+        //             success: function (data) {
+        //                 if (data.tasks) {
+        //                     data.tasks.forEach(function (task, index) {
+        //                         const newRow = taskTable.insertRow();
+        //                         newRow.insertCell(0).textContent = index + 1;
+        //                         newRow.insertCell(1).textContent = task.title;
+        //                         newRow.insertCell(2).textContent = task.status;
+        //                         const actionsCell = newRow.insertCell(3);
+        //                         actionsCell.innerHTML = '<button class="btn btn-danger">Delete</button>';
+        //                     });
+        //                 }
+        //             },
+        //             error: function (error) {
+        //                 console.error('Error getting tasks:', error);
+        //             }
+        //         });
+        //     }
+
+        //     // Function to handle the "Save Task" button click
+        //     function saveTask() {
+        //         const title = document.getElementById('title').value;
+        //         const feedbackMessage = document.getElementById('feedbackMessage');
+        //         const token = getQueryParam('token');
+
+        //         $.ajax({
+        //             url: `http://localhost:8080/task?token=${token}`,
+        //             method: 'POST',
+        //             headers: {
+        //                 'Content-Type': 'application/json',
+        //                 'Authorization': `Bearer ${token}`
+        //             },
+        //             data: JSON.stringify({ title: title }),
+        //             success: function (data) {
+        //                 if (data.status === 'success') {
+        //                     feedbackMessage.textContent = 'Task created successfully';
+        //                     document.getElementById('title').value = '';
+        //                     fetchAndDisplayTasks(token);
+        //                 } else {
+        //                     feedbackMessage.textContent = 'Error creating task';
+        //                 }
+        //             },
+        //             error: function (error) {
+        //                 console.error('Error creating task:', error);
+        //                 feedbackMessage.textContent = 'Error creating task';
+        //             }
+        //         });
+        //     }
+
+        //     // Function to handle the "Get Tasks" button click
+        //     function getTasks() {
+        //         const token = getQueryParam('token');
+        //         fetchAndDisplayTasks(token);
+        //     }
+
+        //     // Check for the token when the page loads
+        //     $(document).ready(function () {
+        //         const token = getQueryParam('token');
+        //         if (token) {
+        //             // Token is available, fetch and display tasks
+        //             fetchAndDisplayTasks(token);
+        //         } else {
+        //             // Token is not available, redirect to the login page
+        //             window.location.href = 'http://localhost:8080/login';
+        //         }
+        //     });
+
+        //     // Attach click event listeners to the buttons
+        //     const saveTaskBtn = document.getElementById('saveTaskBtn');
+        //     const getTasksBtn = document.getElementById('getTasksBtn');
+
+        //     saveTaskBtn.addEventListener('click', saveTask);
+        //     getTasksBtn.addEventListener('click', getTasks);
+        // 
+        function fetchAndDisplayTasks(token) {
+            const taskTable = document.getElementById('taskTable').querySelector('tbody');
+            taskTable.innerHTML = ''; // Clear the existing table rows
+
+            $.ajax({
+                url: `http://localhost:8080/tasks?token=${token}`,
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                success: function (data) {
+                    if (data.data) {
+                        data.data.forEach(function (task, index) {
+                            const newRow = taskTable.insertRow();
+                            newRow.insertCell(0).textContent = index + 1;
+                            newRow.insertCell(1).textContent = task.title;
+                            newRow.insertCell(2).textContent = task.status;
+                            const actionsCell = newRow.insertCell(3);
+                            actionsCell.innerHTML = '<button class="btn btn-danger">Delete</button>';
+                        });
+                    }
+                },
+                error: function (error) {
+                    console.error('Error getting tasks:', error);
+                }
+            });
+        }
+
+        // Check for the token when the page loads
         $(document).ready(function () {
-            // Check if a token is available in the request payload
-            var token = localStorage.getItem('token'); // Assuming you store the token in localStorage
-
-            // If token is not available, redirect to /
-            if (!token) {
-                window.location.href = "/";
-                return;
+            const token = getQueryParam('token');
+            if (token) {
+                // Token is available, fetch and display tasks
+                fetchAndDisplayTasks(token);
+            } else {
+                // Token is not available, redirect to the login page
+                window.location.href = 'http://localhost:8080/login';
             }
-
-            // If token is available, handle form submission
-            $('#addTaskForm').on('submit', function (event) {
-                event.preventDefault(); // Prevent the default form submission
-
-                // Get the form data
-                var taskName = $('#taskName').val();
-
-                // Perform further processing, e.g., sending data to the server
-                // ...
-
-                // Reset the form after processing
-                $('#taskName').val('');
-            });
-
-            // Handle other actions such as retrieving tasks
-            $('#getTasksBtn').on('click', function () {
-                // Perform the action to retrieve tasks
-                // ...
-            });
         });
 
+        // Attach click event listeners to the buttons
+        const saveTaskBtn = document.getElementById('saveTaskBtn');
+        const getTasksBtn = document.getElementById('getTasksBtn');
+
+        saveTaskBtn.addEventListener('click', saveTask);
+        getTasksBtn.addEventListener('click', getTasks);
     </script>
+
 </body>
 
 </html>
