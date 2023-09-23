@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"task-manager-app/database"
 	"task-manager-app/models"
 	"task-manager-app/render"
@@ -46,7 +47,6 @@ func init() {
 
 	// Get the JWT secret key from the environment variables
 	jwtSecret = []byte(os.Getenv("JWT_SECRET"))
-
 }
 
 func main() {
@@ -57,7 +57,7 @@ func main() {
 	}
 	db = DB
 	// Auto Migrate the Task model
-	DB.AutoMigrate(&models.Task{}, &models.User{})
+	DB.AutoMigrate(&models.User{}, &models.Task{})
 
 	r := gin.Default()
 	r.Static("/static", "./static")
@@ -69,270 +69,51 @@ func main() {
 	r.POST("/register", Register)
 	r.POST("/login", Login)
 	r.GET("/todo", TodoPage)
-
+	r.GET("/profile", GetCurrentUser)
 	r.GET("/tasks", GetAllTasks)
 	r.POST("/task/create", CreateTask)
-	r.POST("/task/update/{id}", UpdateTask)
-	r.POST("/task/delete/{id}", DeleteTask)
+	r.PUT("/task/update/:id", UpdateTask)
+	r.DELETE("/task/delete/:id", DeleteTask)
+
 	// Serve static files (like CSS, JS, and images) if needed
 	if err := r.Run(":8080"); err != nil {
 		log.Println("failed to start application")
 		os.Exit(0)
 	}
 }
-
-func HomePage(c *gin.Context) {
-	// Check if a token is present in the request
+func GetCurrentUser(c *gin.Context) {
+	// Extract the JWT token from the request headers
+	// Extract the token from the URL query parameters
+	var user *models.User
 	tokenString := c.Query("token")
 	if tokenString == "" {
-		// Token is not present, render the "home" template
-		render.RenderTemplate(c, "home", nil)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Authorization header is missing"})
+		log.Println("no user is currently logged in")
 		return
 	}
 
-	// Render the "todo" template with tasks
-	render.RenderTemplate(c, "todo", nil)
-}
+	// Extract the token from the "Bearer <token>" format
+	tokenString = strings.Replace(tokenString, "Bearer ", "", 1)
 
-func LoginPage(c *gin.Context) {
-	// Render the HTML page using the template cache
-	render.RenderTemplate(c, "login", nil)
-}
-
-func TodoPage(c *gin.Context) {
-	// Fetch the token from the URL query parameters
-	token := c.DefaultQuery("token", "")
-
-	if token == "" {
-		// Token is not available, redirect to /home
-		c.Redirect(http.StatusSeeOther, "/")
-		return
-	}
-
-	// Token is available, render the HTML page using the template cache
-	render.RenderTemplate(c, "todo", nil)
-}
-
-func RegisterPage(c *gin.Context) {
-	// Render the HTML page using the template cache
-	render.RenderTemplate(c, "register", nil)
-}
-
-func Register(c *gin.Context) {
-	// Get user details from HTML form
-	firstName := c.PostForm("firstname")
-	lastName := c.PostForm("lastname")
-	phone := c.PostForm("phone")
-	email := c.PostForm("email")
-	password := c.PostForm("password")
-
-	// Bcrypt the password received from the HTML form
-	hashedPassword, err := hashPassword(password)
+	// Validate and parse the JWT token to get the user information
+	user, err := GetUserFromToken(tokenString) // Implement GetUserFromToken based on your needs
 	if err != nil {
-		log.Println(err)
-		c.HTML(http.StatusInternalServerError, "register.html", gin.H{"error": err.Error()})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
 		return
 	}
 
-	// Generate a UUID for the user
-	userID := uuid.New()
-
-	// Create a User struct with the form values and generated UUID
-	user := models.User{
-		ID:        userID,
-		FirstName: firstName,
-		LastName:  lastName,
-		Phone:     phone,
-		Email:     email,
-		Password:  hashedPassword,
-	}
-
-	// Check if the email already exists in the database
-	var existingUser models.User
-	if err := db.Where("email = ?", user.Email).First(&existingUser).Error; err == nil {
-		c.JSON(http.StatusConflict, gin.H{"success": false, "message": "Email already exists. Please use a different email address."})
-		return
-	} else if err != gorm.ErrRecordNotFound {
-		log.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Internal server error"})
+	if err := db.Where("id = ?", user.ID).Preload("Tasks").First(&user).Error; err != nil {
+		log.Println("Error fetching user:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve user"})
 		return
 	}
-
-	// Store the user into the database
-	if err := db.Create(&user).Error; err != nil {
-		log.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Registration failed. Please try again later."})
+	if err := db.Where("id = ?", user.ID).First(&user).Error; err != nil {
+		log.Println("Error fetching user:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve user"})
 		return
 	}
-
-	// Registration successful
-	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Registration successful!"})
-}
-
-func hashPassword(password string) ([]byte, error) {
-	// Hash the password using bcrypt
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return nil, err
-	}
-	return hashedPassword, nil
-}
-
-func CreateTask(c *gin.Context) {
-	// Declare a variable to hold the task data
-	var task models.Task
-
-	// Check if the JSON data in the request body can be bound to the task struct
-	if err := c.ShouldBindJSON(&task); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Extract the token from the URL query parameters
-	token := c.Query("token")
-	if token == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Token is missing"})
-		return
-	}
-
-	// Get the user from the token (You may need to implement this logic)
-	user, err := GetUserFromToken(token)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-		return
-	}
-	// Assuming you have extracted the user's ID from the token correctly
-	log.Println("User from token:", user.Email)
-
-	// Set the user ID in the task
-	task.UserID = user.ID
-
-	// Generate a UUID for the task
-	task.ID = uuid.New()
-
-	// Create the task in the database
-	if err := db.Create(&task).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
-		return
-	}
-
-	// Return the created task with a 201 status code
-	c.JSON(http.StatusCreated, task)
-}
-
-func GetAllTasks(c *gin.Context) {
-	// Extract the token from the URL query parameters
-	token := c.Query("token")
-	if token == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "token is missing"})
-		return
-	}
-
-	// Get the user ID from the token using your GetUserFromToken function
-	user, err := GetUserFromToken(token)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
-		return
-	}
-
-	// Retrieve tasks associated with the user
-	var tasks []models.Task
-	if err := db.Where("user_id = ?", user.ID).Find(&tasks).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve tasks"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"data": tasks})
-}
-
-func getUserByEmail(email string) (*models.User, error) {
-	// Create a new User instance to store the result
-	user := &models.User{}
-
-	// Query the database to find the user by email
-	if err := db.Where("email = ?", email).First(user).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			// Return a custom error if the user is not found
-			return nil, errors.New("user not found")
-		}
-		// Return the error for any other database issues
-		return nil, err
-	}
-
-	// Return the user object and nil error if successful
-	return user, nil
-}
-
-func UpdateTask(c *gin.Context) {
-	taskID := c.Param("id")
-	var task models.Task
-
-	// Find the task by ID
-	if result := db.Where("id = ?", taskID).First(&task); result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
-		return
-	}
-
-	var updatedTask models.Task
-	if err := c.ShouldBindJSON(&updatedTask); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Update the task
-	db.Model(&task).Updates(updatedTask)
-
-	c.JSON(http.StatusOK, task)
-}
-
-func DeleteTask(c *gin.Context) {
-	taskID := c.Param("id")
-	var task models.Task
-
-	// Find the task by ID
-	if result := db.Where("id = ?", taskID).First(&task); result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
-		return
-	}
-
-	// Delete the task
-	db.Delete(&task)
-
-	c.JSON(http.StatusOK, gin.H{"message": "Task deleted successfully"})
-}
-
-func Login(c *gin.Context) {
-	var loginRequest LoginRequest
-
-	// Parse the request data based on content type
-	if err := parseLoginRequest(c, &loginRequest); err != nil {
-		return
-	}
-
-	// Check the credentials and get the user
-	user, err := checkCredentials(loginRequest.Email, loginRequest.Password)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"status": "failed", "error": err.Error()})
-		return
-	}
-
-	// Generate a JWT token
-	token, err := generateJWTToken(user.ID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "failed", "error": "Failed to generate JWT token."})
-		return
-	}
-
-	log.Println("success: JWT token generated")
-	log.Println("token: ", token)
-
-	// Redirect based on success
-	// if token != "" {
-	// 	c.Redirect(http.StatusSeeOther, "/todo?token="+token) // Redirect to /todo with the token
-	// } else {
-	// 	c.Redirect(http.StatusSeeOther, "/home") // Redirect to /home
-	// }
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	// Return the user information in the response
+	c.JSON(http.StatusOK, user)
 }
 
 // parseLoginRequest parses the login request data based on content type
@@ -443,4 +224,361 @@ func parseToken(tokenString string) (*CustomClaims, error) {
 	}
 
 	return nil, errors.New("failed to extract claims from token")
+}
+
+func HomePage(c *gin.Context) {
+	// Check if a token is present in the request
+	tokenString := c.Query("token")
+	if tokenString == "" {
+		// Token is not present, render the "home" template
+		render.RenderTemplate(c, "home", nil)
+		return
+	}
+
+	// Render the "todo" template with tasks
+	render.RenderTemplate(c, "todo", nil)
+}
+
+func LoginPage(c *gin.Context) {
+	// Render the HTML page using the template cache
+	render.RenderTemplate(c, "login", nil)
+}
+
+func TodoPage(c *gin.Context) {
+	// Fetch the token from the URL query parameters
+	token := c.DefaultQuery("token", "")
+
+	if token == "" {
+		// Token is not available, redirect to /home
+		c.Redirect(http.StatusSeeOther, "/")
+		return
+	}
+
+	// Token is available, render the HTML page using the template cache
+	render.RenderTemplate(c, "todo", nil)
+}
+
+func RegisterPage(c *gin.Context) {
+	// Render the HTML page using the template cache
+	render.RenderTemplate(c, "register", nil)
+}
+
+func Register(c *gin.Context) {
+	// Get user details from HTML form
+	firstName := c.PostForm("firstname")
+	lastName := c.PostForm("lastname")
+	phone := c.PostForm("phone")
+	email := c.PostForm("email")
+	password := c.PostForm("password")
+
+	// Bcrypt the password received from the HTML form
+	hashedPassword, err := hashPassword(password)
+	if err != nil {
+		log.Println("Error hashing password:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		return
+	}
+
+	// Generate a UUID for the user
+	userID := uuid.New()
+
+	// Create a User struct with the form values and generated UUID
+	user := models.User{
+		ID:        userID,
+		FirstName: firstName,
+		LastName:  lastName,
+		Phone:     phone,
+		Email:     email,
+		Password:  hashedPassword,
+	}
+
+	// Check if the email already exists in the database
+	var existingUser models.User
+	if err := db.Where("email = ?", user.Email).First(&existingUser).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"success": false, "message": "Email already exists. Please use a different email address."})
+		return
+	} else if err != gorm.ErrRecordNotFound {
+		log.Println("Error checking existing email:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Internal server error"})
+		return
+	}
+
+	// Store the user into the database
+	if err := db.Create(&user).Error; err != nil {
+		log.Println("Error creating user:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Registration failed. Please try again later."})
+		return
+	}
+
+	// Registration successful
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Registration successful!"})
+}
+
+func hashPassword(password string) ([]byte, error) {
+	// Hash the password using bcrypt
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+	return hashedPassword, nil
+}
+
+func CreateTask(c *gin.Context) {
+	// Declare a variable to hold the task data
+	var task models.Task
+
+	// Check if the JSON data in the request body can be bound to the task struct
+	if err := c.ShouldBindJSON(&task); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Extract the token from the URL query parameters
+	token := c.Query("token")
+	if token == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Token is missing"})
+		return
+	}
+
+	// Get the user from the token (You may need to implement this logic)
+	user, err := GetUserFromToken(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		return
+	}
+	// Assuming you have extracted the user's ID from the token correctly
+	log.Println("User from token:", user.Email)
+
+	// Set the user ID in the task
+	task.UserID = user.ID
+
+	// Generate a UUID for the task
+	task.ID = uuid.New()
+	// by default set task status to pending
+	task.Status = models.Pending
+
+	// Create the task in the database
+	if err := db.Create(&task).Error; err != nil {
+		log.Println("Error creating task:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
+		return
+	}
+
+	// Return the created task with a 201 status code
+	c.JSON(http.StatusCreated, task)
+}
+
+func GetAllTasks(c *gin.Context) {
+	// Extract the token from the URL query parameters
+	token := c.Query("token")
+	if token == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Token is missing"})
+		return
+	}
+
+	// Get the user ID from the token using your GetUserFromToken function
+	user, err := GetUserFromToken(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		return
+	}
+
+	// Retrieve tasks associated with the user
+	var tasks []models.Task
+	if err := db.Where("user_id = ?", user.ID).Find(&tasks).Error; err != nil {
+		log.Println("Error fetching tasks:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve tasks"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": tasks})
+}
+
+func getUserByEmail(email string) (*models.User, error) {
+	// Create a new User instance to store the result
+	user := &models.User{}
+
+	// Query the database to find the user by email
+	if err := db.Where("email = ?", email).First(user).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// Return a custom error if the user is not found
+			return nil, errors.New("user not found")
+		}
+		// Return the error for any other database issues
+		return nil, err
+	}
+
+	// Return the user object and nil error if successful
+	return user, nil
+}
+func UpdateTask(c *gin.Context) {
+	// Extract the token from the URL query parameters
+	token := c.Query("token")
+	if token == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "token is missing"})
+		return
+	}
+
+	// Get the user ID from the token using your GetUserFromToken function
+	user, err := GetUserFromToken(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		return
+	}
+
+	// Extract the task ID from the URL route parameters
+	taskID := c.Param("id")
+
+	// Check if the task exists and belongs to the user
+	var task models.Task
+	if err := db.Where("id = ? AND user_id = ?", taskID, user.ID).First(&task).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "task not found"})
+		return
+	}
+
+	// Parse the request body to get the updated status and priority
+	var updateData struct {
+		Status   string `json:"status"`
+		Priority string `json:"priority"`
+	}
+	if err := c.ShouldBindJSON(&updateData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request data"})
+		return
+	}
+
+	if updateData.Status != "" {
+		// Update the task status
+		task.Status = updateData.Status
+	}
+
+	if updateData.Priority != "" {
+		// Update the task priority
+		task.Priority = updateData.Priority
+	}
+
+	if err := db.Save(&task).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update task"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "task updated successfully"})
+}
+
+// func UpdateTask(c *gin.Context) {
+// 	// Extract the token from the URL query parameters
+// 	token := c.Query("token")
+// 	if token == "" {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "token is missing"})
+// 		return
+// 	}
+
+// 	// Get the user ID from the token using your GetUserFromToken function
+// 	user, err := GetUserFromToken(token)
+// 	if err != nil {
+// 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+// 		return
+// 	}
+
+// 	// Extract the task ID from the URL route parameters
+// 	taskID := c.Param("id")
+
+// 	// Check if the task exists and belongs to the user
+// 	var task models.Task
+// 	if err := db.Where("id = ? AND user_id = ?", taskID, user.ID).First(&task).Error; err != nil {
+// 		c.JSON(http.StatusNotFound, gin.H{"error": "task not found"})
+// 		return
+// 	}
+
+// 	// Parse the request body to get the updated status
+// 	var updateData struct {
+// 		Status   string `json:"status"`
+// 		Priority string `json:"priority"`
+// 	}
+// 	if err := c.ShouldBindJSON(&updateData); err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request data"})
+// 		return
+// 	}
+// 	if updateData.Status == "" {
+// 		// Update the task pre
+// 		task.Priority = updateData.Priority
+// 		if err := db.Save(&task).Error; err != nil {
+// 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update task priority"})
+// 			return
+// 		}
+// 		c.JSON(http.StatusOK, gin.H{"message": "task priority updated successfully"})
+// 	} else {
+// 		// Update the task status
+// 		task.Status = updateData.Status
+// 		if err := db.Save(&task).Error; err != nil {
+// 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update task status"})
+// 			return
+// 		}
+// 		c.JSON(http.StatusOK, gin.H{"message": "task status updated successfully"})
+
+// 	}
+
+// }
+
+func DeleteTask(c *gin.Context) {
+	// Extract the token from the URL query parameters
+	token := c.Query("token")
+	if token == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "token is missing"})
+		return
+	}
+
+	// Get the user ID from the token using your GetUserFromToken function
+	user, err := GetUserFromToken(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		return
+	}
+
+	// Extract the task ID from the URL route parameters
+	taskID := c.Param("id")
+
+	// Check if the task exists and belongs to the user
+	var task models.Task
+	if err := db.Where("id = ? AND user_id = ?", taskID, user.ID).First(&task).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "task not found"})
+		return
+	}
+
+	// Delete the task
+	if err := db.Delete(&task).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete task"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "task deleted successfully"})
+}
+
+func Login(c *gin.Context) {
+	var loginRequest LoginRequest
+
+	// Parse the request data based on content type
+	if err := parseLoginRequest(c, &loginRequest); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "failed", "error": err.Error()})
+		return
+	}
+
+	// Check the credentials and get the user
+	user, err := checkCredentials(loginRequest.Email, loginRequest.Password)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "failed", "error": err.Error()})
+		return
+	}
+
+	// Generate a JWT token
+	token, err := generateJWTToken(user.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "failed", "error": "Failed to generate JWT token."})
+		return
+	}
+
+	log.Println("success: JWT token generated")
+	log.Println("token: ", token)
+
+	// Respond with the generated token
+	c.JSON(http.StatusOK, gin.H{"token": token})
 }

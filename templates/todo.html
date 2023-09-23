@@ -12,6 +12,30 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Jost&family=Urbanist:wght@500&display=swap" rel="stylesheet">
     <style>
+        /* Circular Button Styles */
+        .circular-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background-color: #3498db;
+            color: #fff;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            text-align: center;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Adjust the icon size and style as needed */
+        .circular-button i {
+            font-size: 24px;
+        }
+
         body {
             margin: 0;
             padding: 0;
@@ -35,6 +59,10 @@
 </head>
 
 <body>
+    <!-- Circular Button -->
+    <div id="profileButton" class="circular-button">
+        <i class="fas fa-user"></i>
+    </div>
     <div class="container">
         <div class="row">
             <div class="col">
@@ -60,7 +88,7 @@
                                                     id="saveTaskBtn">Create</button>
                                             </div>
                                             <div class="col-12">
-                                                <div id="feedbackMessage" class="text-danger"></div>
+                                                <div id="feedbackMessage" class="text-warning"></div>
                                             </div>
                                         </form>
 
@@ -77,6 +105,7 @@
                                                     <th scope="col">No.</th>
                                                     <th scope="col">Task Title</th>
                                                     <th scope="col">Status</th>
+                                                    <th scope="col">Priority</th> <!-- Added Priority Column -->
                                                     <th scope="col">Actions</th>
                                                 </tr>
                                             </thead>
@@ -84,6 +113,74 @@
                                                 <!-- Task rows will be inserted here dynamically -->
                                             </tbody>
                                         </table>
+                                        <!-- Update Priority Modal -->
+                                        <div class="modal fade" id="updatePriorityModal" tabindex="-1"
+                                            aria-labelledby="updatePriorityModalLabel" aria-hidden="true">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title" id="updatePriorityModalLabel">Update
+                                                            Task Priority</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                                            aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <form id="updatePriorityForm">
+                                                            <div class="mb-3">
+                                                                <label for="prioritySelect" class="form-label">Select
+                                                                    Priority</label>
+                                                                <select class="form-select" id="prioritySelect"
+                                                                    required>
+                                                                    <option value="low">Low</option>
+                                                                    <option value="medium">Medium</option>
+                                                                    <option value="high">High</option>
+                                                                </select>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary"
+                                                            data-bs-dismiss="modal">Close</button>
+                                                        <button type="button" class="btn btn-primary"
+                                                            id="updatePriorityBtn">Save changes</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Update Status Modal -->
+                                        <div class="modal fade" id="updateStatusModal" tabindex="-1"
+                                            aria-labelledby="updateStatusModalLabel" aria-hidden="true">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title" id="updateStatusModalLabel">Update Task
+                                                            Status</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                                            aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <form id="updateStatusForm">
+                                                            <div class="mb-3">
+                                                                <label for="statusSelect" class="form-label">Select
+                                                                    Status</label>
+                                                                <select class="form-select" id="statusSelect" required>
+                                                                    <option value="pending">Pending</option>
+                                                                    <option value="completed">Completed</option>
+                                                                    <option value="canceled">Canceled</option>
+                                                                    <option value="active">Active</option>
+                                                                </select>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary"
+                                                            data-bs-dismiss="modal">Close</button>
+                                                        <button type="button" class="btn btn-primary"
+                                                            id="updateStatusBtn">Save changes</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -93,148 +190,174 @@
             </div>
         </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
+        integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"
+        integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+"
         crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-        // Function to extract a query parameter from the URL
-        function getQueryParam(param) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get(param);
-        }
-
-        //     // Function to fetch tasks and display them
-        //     function fetchAndDisplayTasks(token) {
-        //         const taskTable = document.getElementById('taskTable').querySelector('tbody');
-        //         taskTable.innerHTML = ''; // Clear the existing table rows
-
-        //         $.ajax({
-        //             url: `http://localhost:8080/tasks?token=${token}`,
-        //             method: 'GET',
-        //             headers: {
-        //                 'Authorization': `Bearer ${token}`
-        //             },
-        //             success: function (data) {
-        //                 if (data.tasks) {
-        //                     data.tasks.forEach(function (task, index) {
-        //                         const newRow = taskTable.insertRow();
-        //                         newRow.insertCell(0).textContent = index + 1;
-        //                         newRow.insertCell(1).textContent = task.title;
-        //                         newRow.insertCell(2).textContent = task.status;
-        //                         const actionsCell = newRow.insertCell(3);
-        //                         actionsCell.innerHTML = '<button class="btn btn-danger">Delete</button>';
-        //                     });
-        //                 }
-        //             },
-        //             error: function (error) {
-        //                 console.error('Error getting tasks:', error);
-        //             }
-        //         });
-        //     }
-
-        //     // Function to handle the "Save Task" button click
-        //     function saveTask() {
-        //         const title = document.getElementById('title').value;
-        //         const feedbackMessage = document.getElementById('feedbackMessage');
-        //         const token = getQueryParam('token');
-
-        //         $.ajax({
-        //             url: `http://localhost:8080/task?token=${token}`,
-        //             method: 'POST',
-        //             headers: {
-        //                 'Content-Type': 'application/json',
-        //                 'Authorization': `Bearer ${token}`
-        //             },
-        //             data: JSON.stringify({ title: title }),
-        //             success: function (data) {
-        //                 if (data.status === 'success') {
-        //                     feedbackMessage.textContent = 'Task created successfully';
-        //                     document.getElementById('title').value = '';
-        //                     fetchAndDisplayTasks(token);
-        //                 } else {
-        //                     feedbackMessage.textContent = 'Error creating task';
-        //                 }
-        //             },
-        //             error: function (error) {
-        //                 console.error('Error creating task:', error);
-        //                 feedbackMessage.textContent = 'Error creating task';
-        //             }
-        //         });
-        //     }
-
-        //     // Function to handle the "Get Tasks" button click
-        //     function getTasks() {
-        //         const token = getQueryParam('token');
-        //         fetchAndDisplayTasks(token);
-        //     }
-
-        //     // Check for the token when the page loads
-        //     $(document).ready(function () {
-        //         const token = getQueryParam('token');
-        //         if (token) {
-        //             // Token is available, fetch and display tasks
-        //             fetchAndDisplayTasks(token);
-        //         } else {
-        //             // Token is not available, redirect to the login page
-        //             window.location.href = 'http://localhost:8080/login';
-        //         }
-        //     });
-
-        //     // Attach click event listeners to the buttons
-        //     const saveTaskBtn = document.getElementById('saveTaskBtn');
-        //     const getTasksBtn = document.getElementById('getTasksBtn');
-
-        //     saveTaskBtn.addEventListener('click', saveTask);
-        //     getTasksBtn.addEventListener('click', getTasks);
-        // 
-        function fetchAndDisplayTasks(token) {
-            const taskTable = document.getElementById('taskTable').querySelector('tbody');
-            taskTable.innerHTML = ''; // Clear the existing table rows
-
-            $.ajax({
-                url: `http://localhost:8080/tasks?token=${token}`,
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
-                success: function (data) {
-                    if (data.data) {
-                        data.data.forEach(function (task, index) {
-                            const newRow = taskTable.insertRow();
-                            newRow.insertCell(0).textContent = index + 1;
-                            newRow.insertCell(1).textContent = task.title;
-                            newRow.insertCell(2).textContent = task.status;
-                            const actionsCell = newRow.insertCell(3);
-                            actionsCell.innerHTML = '<button class="btn btn-danger">Delete</button>';
-                        });
-                    }
-                },
-                error: function (error) {
-                    console.error('Error getting tasks:', error);
-                }
-            });
-        }
-
-        // Check for the token when the page loads
         $(document).ready(function () {
-            const token = getQueryParam('token');
+            // Check for JWT token when the page loads
+            const token = localStorage.getItem('token');
             if (token) {
-                // Token is available, fetch and display tasks
-                fetchAndDisplayTasks(token);
+                // Circular Button Click Event
+                $('#profileButton').click(function () {
+                    // Send an AJAX request to fetch user details
+                    $.get({
+                        url: 'http://localhost:8080/profile?token=' + token, // Include the JWT token in the request
+                        success: function (response) {
+                            // Handle the response and display user details as needed
+                            alert('User Details: ' + JSON.stringify(response));
+                        },
+                        error: function () {
+                            // Handle error by displaying an error message
+                            alert('Failed to fetch user details. Please try again.');
+                        }
+                    });
+                });
+                // If token exists, fetch tasks and display them
+                fetchTasks(token);
             } else {
-                // Token is not available, redirect to the login page
-                window.location.href = 'http://localhost:8080/login';
+                // If no token, redirect to login or handle as needed
+                window.location.href = 'http://localhost:8080';
             }
+
+            // Add Task Form
+            $('#saveTaskBtn').click(function () {
+                const title = $('#title').val();
+                if (title.trim() === '') {
+                    $('#feedbackMessage').text('Task title cannot be empty.');
+                    return;
+                }
+
+                // Send a POST request to create a new task with the token in URL params
+                $.post({
+                    url: `http://localhost:8080/task/create?token=${token}`,
+                    data: JSON.stringify({ title }),
+                    contentType: 'application/json',
+                    success: function () {
+                        fetchTasks(token); // Refresh the task list
+                        $('#title').val(''); // Clear the input field
+                        fetchTasks(token); // Refresh the task list
+                    },
+                    error: function () {
+                        $('#feedbackMessage').text('Failed to create a task.');
+                    }
+                });
+            });
+
+            // Get All Tasks Button
+            $('#getTasksBtn').click(function () {
+                fetchTasks(token);
+            });
+            // Function to fetch tasks and update the table
+            function fetchTasks(token) {
+                $.get({
+                    url: `http://localhost:8080/tasks?token=${token}`,
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    success: function (response) {
+                        const data = response.data; // Extract the data array from the response
+
+                        const taskTable = $('#taskTable tbody');
+                        taskTable.empty();
+                        data.forEach(function (task, index) {
+                            taskTable.append(`
+                    <tr>
+                        <th scope="row">${index + 1}</th>
+                        <td>${task.title}</td>
+                        <td>${task.status}</td>
+                        <td>${task.priority}</td>
+                        <td>
+                            <button class="btn btn-danger delete-task" data-id="${task.id}">Delete</button>
+                            <button class="btn btn-primary update-task" data-id="${task.id}">Update Status</button>
+                            <button class="btn btn-info update-priority" data-id="${task.id}">Update Priority</button>
+                        </td>
+                    </tr>
+                `);
+                        });
+
+                        // Delete Task Button
+                        $('.delete-task').click(function () {
+                            const taskId = $(this).data('id');
+                            // Send a DELETE request to delete the task
+                            $.ajax({
+                                url: `http://localhost:8080/task/delete/${taskId}?token=${token}`,
+                                type: 'DELETE',
+                                success: function () {
+                                    fetchTasks(token); // Refresh the task list
+                                },
+                                error: function () {
+                                    $('#feedbackMessage').text('Failed to delete the task.');
+                                }
+                            });
+                        });
+
+                        // Update Task Button (open modal or handle as needed)
+                        $('.update-task').click(function () {
+                            const taskId = $(this).data('id');
+                            // Send an UPDATE request to update the task
+                            $('#updateStatusModal').modal('show');
+                            //TODO:
+                            // Add functionality to update status when the modal's save button is clicked
+                            $('#updateStatusBtn').click(function () {
+                                const newStatus = $('#statusSelect').val();
+                                // Send an AJAX request to update the status
+                                $.ajax({
+                                    url: `http://localhost:8080/task/update/${taskId}?token=${token}`,
+                                    type: 'PUT',
+                                    data: JSON.stringify({ status: newStatus }),
+                                    contentType: 'application/json',
+                                    success: function () {
+                                        fetchTasks(token); // Refresh the task list
+                                        $('#updateStatusModal').modal('hide'); // Close the modal
+                                    },
+                                    error: function () {
+                                        // Handle error by displaying an error message
+                                        $('#updateStatusError').text('Failed to update status. Please try again.');
+                                    }
+                                });
+                            });
+                        });
+                        // Update Priority Button (open modal for priority update)
+                        $('.update-priority').click(function () {
+                            const taskId = $(this).data('id');
+                            // Open the modal for updating priority
+                            $('#updatePriorityModal').modal('show');
+
+                            // Add functionality to update priority when the modal's save button is clicked
+                            $('#updatePriorityBtn').click(function () {
+                                const newPriority = $('#prioritySelect').val();
+                                // Send an AJAX request to update the priority
+                                $.ajax({
+                                    url: `http://localhost:8080/task/update/${taskId}?token=${token}`,
+                                    type: 'PUT',
+                                    data: JSON.stringify({ priority: newPriority }),
+                                    contentType: 'application/json',
+                                    success: function () {
+                                        fetchTasks(token); // Refresh the task list
+                                        $('#updatePriorityModal').modal('hide'); // Close the modal
+                                    },
+                                    error: function () {
+                                        // Handle error by displaying an error message
+                                        $('#updatePriorityError').text('Failed to update priority. Please try again.');
+                                    }
+                                });
+                            });
+                        });
+
+                    },
+                    error: function () {
+                        $('#feedbackMessage').text('Failed to fetch tasks.');
+                    }
+                });
+            }
+
         });
 
-        // Attach click event listeners to the buttons
-        const saveTaskBtn = document.getElementById('saveTaskBtn');
-        const getTasksBtn = document.getElementById('getTasksBtn');
-
-        saveTaskBtn.addEventListener('click', saveTask);
-        getTasksBtn.addEventListener('click', getTasks);
     </script>
+
 
 </body>
 

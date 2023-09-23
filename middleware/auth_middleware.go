@@ -1,7 +1,8 @@
 package middleware
 
 import (
-	"log"
+	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
@@ -11,12 +12,23 @@ var jwtSecret []byte
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Get the JWT token from the request header
-		tokenString := c.GetHeader("Authorization")
-		if tokenString == "" {
-			log.Println("error : JWT token is missing")
+		// Get the JWT token from the "Authorization" header
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "JWT token is missing"})
+			c.Abort()
 			return
 		}
+
+		// Check if the token starts with "Bearer "
+		if !strings.HasPrefix(authHeader, "Bearer ") {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token format"})
+			c.Abort()
+			return
+		}
+
+		// Extract the token without the "Bearer " prefix
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 
 		// Parse the JWT token
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
@@ -24,7 +36,8 @@ func AuthMiddleware() gin.HandlerFunc {
 		})
 
 		if err != nil || !token.Valid {
-			log.Println("error : Invalid JWT token")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid JWT token"})
+			c.Abort()
 			return
 		}
 
