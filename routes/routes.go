@@ -2,6 +2,7 @@ package routes
 
 import (
 	"task-manager-app/controllers"
+	"task-manager-app/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -11,12 +12,18 @@ func SetupRoutes(r *gin.Engine) {
 	r.GET("/", controllers.HomePage)
 	r.GET("/register", controllers.RegisterPage)
 	r.GET("/login", controllers.LoginPage)
-	r.POST("/register", controllers.Register)
-	r.POST("/login", controllers.Login)
-	r.GET("/todo", controllers.TodoPage)
-	r.GET("/profile", controllers.GetCurrentUser)
-	r.GET("/tasks", controllers.GetAllTasks)
-	r.POST("/task/create", controllers.CreateTask)
-	r.PUT("/task/update/:id", controllers.UpdateTask)
-	r.DELETE("/task/delete/:id", controllers.DeleteTask)
+
+	// Create a router group for protected routes that require authentication
+	protected := r.Group("/")
+	protected.Use(middleware.AuthMiddleware()) // Apply AuthMiddleware to this group
+	{
+		protected.POST("/register", controllers.Register)
+		protected.POST("/login", controllers.Login)
+		protected.GET("/todo", controllers.TodoPage)
+		protected.GET("/profile", controllers.GetCurrentUser)
+		protected.GET("/tasks", controllers.GetAllTasks)
+		protected.POST("/task/create", controllers.CreateTask)
+		protected.PUT("/task/update/:id", controllers.UpdateTask)
+		protected.DELETE("/task/delete/:id", controllers.DeleteTask)
+	}
 }

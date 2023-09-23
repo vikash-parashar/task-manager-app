@@ -1,0 +1,47 @@
+
+/* Circular Button Styles */
+.circular-button {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background-color: #3498db;
+    color: #fff;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    text-align: center;
+    font-size: 24px;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Adjust the icon size and style as needed */
+.circular-button i {
+    font-size: 24px;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(to bottom, #52042e, #3cd6e7);
+    color: #2286ae;
+    /* Text color on the gradient background */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    /* Ensure the background covers the entire viewport */
+    font-family: 'Jost', sans-serif;
+    font-family: 'Urbanist', sans-serif;
+}
+
+a {
+    text-decoration: none;
+    color: #fafafa;
+}
+section{
+    background-color: linear-gradient(to bottom, #3498db, #e74c3c);
+}

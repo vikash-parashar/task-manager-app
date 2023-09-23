@@ -3,7 +3,6 @@ package controllers
 import (
 	"log"
 	"net/http"
-	"strings"
 	"task-manager-app/db"
 	"task-manager-app/helpers"
 	"task-manager-app/models"
@@ -73,16 +72,6 @@ func GetCurrentUser(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or missing token cookie"})
 		return
 	}
-
-	// Proceed with the existing code to validate and retrieve the user
-	authorizationHeader := c.GetHeader("Authorization")
-	if authorizationHeader == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Authorization header is missing"})
-		return
-	}
-
-	// Extract the token from the "Bearer <token>" format
-	token = strings.Replace(authorizationHeader, "Bearer ", "", 1)
 
 	// Validate and parse the JWT token to get the user information
 	user, err := helpers.GetUserFromToken(token) // Implement GetUserFromToken based on your needs

@@ -4,7 +4,6 @@ import (
 	"log"
 	"task-manager-app/config"
 	"task-manager-app/db"
-	"task-manager-app/middleware"
 	"task-manager-app/models"
 	"task-manager-app/routes"
 
@@ -19,7 +18,6 @@ func main() {
 	}
 
 	r := gin.Default()
-	r.Use(middleware.AuthMiddleware())
 	r.Use(gin.Recovery())
 	r.Static("/static", "./static")
 

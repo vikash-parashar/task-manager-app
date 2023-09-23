@@ -11,51 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Jost&family=Urbanist:wght@500&display=swap" rel="stylesheet">
-    <style>
-        /* Circular Button Styles */
-        .circular-button {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            background-color: #3498db;
-            color: #fff;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            text-align: center;
-            font-size: 24px;
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* Adjust the icon size and style as needed */
-        .circular-button i {
-            font-size: 24px;
-        }
-
-        body {
-            margin: 0;
-            padding: 0;
-            background: linear-gradient(to bottom, #52042e, #3cd6e7);
-            color: #2286ae;
-            /* Text color on the gradient background */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            /* Ensure the background covers the entire viewport */
-            font-family: 'Jost', sans-serif;
-            font-family: 'Urbanist', sans-serif;
-        }
-
-        a {
-            text-decoration: none;
-            color: #fafafa;
-        }
-    </style>
+    <link rel="stylesheet" href="../static/css/todo.css">
 </head>
 
 <body>
@@ -66,7 +22,7 @@
     <div class="container">
         <div class="row">
             <div class="col">
-                <section class="vh-100" style="background-color: linear-gradient(to bottom, #3498db, #e74c3c);">
+                <section class="vh-100">
                     <div class="container py-5 h-100">
                         <div class="row d-flex justify-content-center align-items-center h-100">
                             <div class="col col-lg-9 col-xl-7">
@@ -197,168 +153,7 @@
         integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+"
         crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script>
-        $(document).ready(function () {
-            // Check for JWT token when the page loads
-            const token = localStorage.getItem('token');
-            if (token) {
-                // Circular Button Click Event
-                $('#profileButton').click(function () {
-                    // Send an AJAX request to fetch user details
-                    $.get({
-                        url: 'http://localhost:8080/profile?token=' + token, // Include the JWT token in the request
-                        success: function (response) {
-                            // Handle the response and display user details as needed
-                            alert('User Details: ' + JSON.stringify(response));
-                        },
-                        error: function () {
-                            // Handle error by displaying an error message
-                            alert('Failed to fetch user details. Please try again.');
-                        }
-                    });
-                });
-                // If token exists, fetch tasks and display them
-                fetchTasks(token);
-            } else {
-                // If no token, redirect to login or handle as needed
-                window.location.href = 'http://localhost:8080';
-            }
-
-            // Add Task Form
-            $('#saveTaskBtn').click(function () {
-                const title = $('#title').val();
-                if (title.trim() === '') {
-                    $('#feedbackMessage').text('Task title cannot be empty.');
-                    return;
-                }
-
-                // Send a POST request to create a new task with the token in URL params
-                $.post({
-                    url: `http://localhost:8080/task/create?token=${token}`,
-                    data: JSON.stringify({ title }),
-                    contentType: 'application/json',
-                    success: function () {
-                        fetchTasks(token); // Refresh the task list
-                        $('#title').val(''); // Clear the input field
-                        fetchTasks(token); // Refresh the task list
-                    },
-                    error: function () {
-                        $('#feedbackMessage').text('Failed to create a task.');
-                    }
-                });
-            });
-
-            // Get All Tasks Button
-            $('#getTasksBtn').click(function () {
-                fetchTasks(token);
-            });
-            // Function to fetch tasks and update the table
-            function fetchTasks(token) {
-                $.get({
-                    url: `http://localhost:8080/tasks?token=${token}`,
-                    headers: { 'Authorization': `Bearer ${token}` },
-                    success: function (response) {
-                        const data = response.data; // Extract the data array from the response
-
-                        const taskTable = $('#taskTable tbody');
-                        taskTable.empty();
-                        data.forEach(function (task, index) {
-                            taskTable.append(`
-                    <tr>
-                        <th scope="row">${index + 1}</th>
-                        <td>${task.title}</td>
-                        <td>${task.status}</td>
-                        <td>${task.priority}</td>
-                        <td>
-                            <button class="btn btn-danger delete-task" data-id="${task.id}">Delete</button>
-                            <button class="btn btn-primary update-task" data-id="${task.id}">Update Status</button>
-                            <button class="btn btn-info update-priority" data-id="${task.id}">Update Priority</button>
-                        </td>
-                    </tr>
-                `);
-                        });
-
-                        // Delete Task Button
-                        $('.delete-task').click(function () {
-                            const taskId = $(this).data('id');
-                            // Send a DELETE request to delete the task
-                            $.ajax({
-                                url: `http://localhost:8080/task/delete/${taskId}?token=${token}`,
-                                type: 'DELETE',
-                                success: function () {
-                                    fetchTasks(token); // Refresh the task list
-                                },
-                                error: function () {
-                                    $('#feedbackMessage').text('Failed to delete the task.');
-                                }
-                            });
-                        });
-
-                        // Update Task Button (open modal or handle as needed)
-                        $('.update-task').click(function () {
-                            const taskId = $(this).data('id');
-                            // Send an UPDATE request to update the task
-                            $('#updateStatusModal').modal('show');
-                            //TODO:
-                            // Add functionality to update status when the modal's save button is clicked
-                            $('#updateStatusBtn').click(function () {
-                                const newStatus = $('#statusSelect').val();
-                                // Send an AJAX request to update the status
-                                $.ajax({
-                                    url: `http://localhost:8080/task/update/${taskId}?token=${token}`,
-                                    type: 'PUT',
-                                    data: JSON.stringify({ status: newStatus }),
-                                    contentType: 'application/json',
-                                    success: function () {
-                                        fetchTasks(token); // Refresh the task list
-                                        $('#updateStatusModal').modal('hide'); // Close the modal
-                                    },
-                                    error: function () {
-                                        // Handle error by displaying an error message
-                                        $('#updateStatusError').text('Failed to update status. Please try again.');
-                                    }
-                                });
-                            });
-                        });
-                        // Update Priority Button (open modal for priority update)
-                        $('.update-priority').click(function () {
-                            const taskId = $(this).data('id');
-                            // Open the modal for updating priority
-                            $('#updatePriorityModal').modal('show');
-
-                            // Add functionality to update priority when the modal's save button is clicked
-                            $('#updatePriorityBtn').click(function () {
-                                const newPriority = $('#prioritySelect').val();
-                                // Send an AJAX request to update the priority
-                                $.ajax({
-                                    url: `http://localhost:8080/task/update/${taskId}?token=${token}`,
-                                    type: 'PUT',
-                                    data: JSON.stringify({ priority: newPriority }),
-                                    contentType: 'application/json',
-                                    success: function () {
-                                        fetchTasks(token); // Refresh the task list
-                                        $('#updatePriorityModal').modal('hide'); // Close the modal
-                                    },
-                                    error: function () {
-                                        // Handle error by displaying an error message
-                                        $('#updatePriorityError').text('Failed to update priority. Please try again.');
-                                    }
-                                });
-                            });
-                        });
-
-                    },
-                    error: function () {
-                        $('#feedbackMessage').text('Failed to fetch tasks.');
-                    }
-                });
-            }
-
-        });
-
-    </script>
-
-
+    <script src="../static/js/todo.js"></script>
 </body>
 
 </html>

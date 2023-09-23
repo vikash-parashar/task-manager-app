@@ -12,14 +12,10 @@ import (
 func HomePage(c *gin.Context) {
 	// Extract the JWT token from the cookie
 	token, err := c.Cookie("jwt-token")
-	if err != nil {
+	if err != nil || token == "" {
 		// Log the error and return an unauthorized response
 		log.Printf("ERROR: Failed to extract JWT token from cookie - %s\n", err)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or missing token cookie"})
-		return
-	}
-
-	if token == "" {
+		// c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or missing token cookie"})
 		// Token is not present, render the "home" template
 		render.RenderTemplate(c, "home", nil)
 		return
