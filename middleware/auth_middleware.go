@@ -3,15 +3,18 @@ package middleware
 import (
 	"net/http"
 	"strings"
+	"task-manager-app/config"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
 )
 
-var jwtSecret []byte
-
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		appConfig, err := config.Load()
+		if err != nil {
+			return
+		}
 		// Get the JWT token from the "Authorization" header
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -32,7 +35,7 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		// Parse the JWT token
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			return jwtSecret, nil // Use the same JWT secret key defined earlier
+			return appConfig.JWTSecret, nil
 		})
 
 		if err != nil || !token.Valid {
