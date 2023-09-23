@@ -33,7 +33,7 @@ func main() {
 	dbInstance.AutoMigrate(&models.User{}, &models.Task{})
 	cfg.Database = dbInstance
 	// Define routes
-	routes.SetupRoutes(r, dbInstance)
+	routes.SetupRoutes(r)
 
 	// Serve static files (like CSS, JS, and images) if needed
 	if err := r.Run(":8080"); err != nil {
