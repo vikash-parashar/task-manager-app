@@ -4,10 +4,9 @@ import (
 	"task-manager-app/controllers"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
-func SetupRoutes(r *gin.Engine, dbInstance *gorm.DB) {
+func SetupRoutes(r *gin.Engine) {
 	// Pass the database instance to your route handlers if needed
 	r.GET("/", controllers.HomePage)
 	r.GET("/register", controllers.RegisterPage)
