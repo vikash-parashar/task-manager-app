@@ -1,0 +1,23 @@
+body {
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(to bottom, #52042e, #3cd6e7);
+    color: #fdfdfd;
+    /* Text color on the gradient background */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    /* Ensure the background covers the entire viewport */
+    font-family: 'Jost', sans-serif;
+    font-family: 'Urbanist', sans-serif;
+}
+
+a {
+    text-decoration: none;
+    color: rgb(254, 254, 254);
+}
+
+.ad {
+    color: #b01450;
+}

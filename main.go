@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 	"task-manager-app/config"
-	"task-manager-app/db"
+	"task-manager-app/middleware"
 	"task-manager-app/models"
 	"task-manager-app/routes"
 
@@ -11,8 +11,8 @@ import (
 )
 
 func main() {
-	// Load configuration
-	cfg, err := config.Load()
+	// Initialize the application configuration
+	appConfig, err := config.Load()
 	if err != nil {
 		log.Fatalf("ERROR: Failed to load configuration: %v", err)
 	}
@@ -21,17 +21,14 @@ func main() {
 	r.Use(gin.Recovery())
 	r.Static("/static", "./static")
 
-	// Setup the database using the configuration variables
-	dbInstance, err := db.Setup()
-	if err != nil {
-		log.Fatalf("ERROR: Failed to connect to database: %v", err)
-	}
-
 	// Auto Migrate the User and Task models
-	dbInstance.AutoMigrate(&models.User{}, &models.Task{})
-	cfg.Database = dbInstance
-	// Define routes
-	routes.SetupRoutes(r)
+	appConfig.Database.AutoMigrate(&models.User{}, &models.Task{})
+
+	// Use the InjectDB middleware to inject the database into the context
+	r.Use(middleware.InjectDB(appConfig.Database))
+
+	// Define routes and pass appConfig as a closure to the route handlers
+	routes.SetupRoutes(r, appConfig)
 
 	// Serve static files (like CSS, JS, and images) if needed
 	if err := r.Run(":8080"); err != nil {

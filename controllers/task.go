@@ -3,7 +3,7 @@ package controllers
 import (
 	"log"
 	"net/http"
-	"task-manager-app/db"
+	"task-manager-app/config"
 	"task-manager-app/helpers"
 	"task-manager-app/models"
 
@@ -12,7 +12,7 @@ import (
 )
 
 // CreateTask creates a new task.
-func CreateTask(c *gin.Context) {
+func CreateTask(c *gin.Context, appConfig *config.AppConfig) {
 	// Declare a variable to hold the task data
 	var task models.Task
 
@@ -51,7 +51,7 @@ func CreateTask(c *gin.Context) {
 	task.Status = models.Pending
 
 	// Create the task in the database
-	if err := db.DB.Create(&task).Error; err != nil {
+	if err := appConfig.Database.Create(&task).Error; err != nil {
 		log.Printf("ERROR: Failed to create task - %s\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
 		return
@@ -62,7 +62,7 @@ func CreateTask(c *gin.Context) {
 }
 
 // GetAllTasks retrieves all tasks for the authenticated user.
-func GetAllTasks(c *gin.Context) {
+func GetAllTasks(c *gin.Context, appConfig *config.AppConfig) {
 	// Extract the JWT token from the cookie
 	token, err := c.Cookie("jwt-token")
 	if err != nil {
@@ -81,7 +81,7 @@ func GetAllTasks(c *gin.Context) {
 
 	// Retrieve tasks associated with the user
 	var tasks []models.Task
-	if err := db.DB.Where("user_id = ?", user.ID).Find(&tasks).Error; err != nil {
+	if err := appConfig.Database.Where("user_id = ?", user.ID).Find(&tasks).Error; err != nil {
 		log.Printf("ERROR: Failed to fetch tasks - %s\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve tasks"})
 		return
@@ -91,7 +91,7 @@ func GetAllTasks(c *gin.Context) {
 }
 
 // UpdateTask updates the status and priority of a task.
-func UpdateTask(c *gin.Context) {
+func UpdateTask(c *gin.Context, appConfig *config.AppConfig) {
 	// Extract the JWT token from the cookie
 	token, err := c.Cookie("jwt-token")
 	if err != nil {
@@ -113,7 +113,7 @@ func UpdateTask(c *gin.Context) {
 
 	// Check if the task exists and belongs to the user
 	var task models.Task
-	if err := db.DB.Where("id = ? AND user_id = ?", taskID, user.ID).First(&task).Error; err != nil {
+	if err := appConfig.Database.Where("id = ? AND user_id = ?", taskID, user.ID).First(&task).Error; err != nil {
 		log.Printf("ERROR: Task not found or does not belong to the user - %s\n", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found or does not belong to the user"})
 		return
@@ -140,7 +140,7 @@ func UpdateTask(c *gin.Context) {
 		task.Priority = updateData.Priority
 	}
 
-	if err := db.DB.Save(&task).Error; err != nil {
+	if err := appConfig.Database.Save(&task).Error; err != nil {
 		log.Printf("ERROR: Failed to update task - %s\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update task"})
 		return
@@ -150,7 +150,7 @@ func UpdateTask(c *gin.Context) {
 }
 
 // DeleteTask deletes a task.
-func DeleteTask(c *gin.Context) {
+func DeleteTask(c *gin.Context, appConfig *config.AppConfig) {
 	// Extract the JWT token from the cookie
 	token, err := c.Cookie("jwt-token")
 	if err != nil {
@@ -172,14 +172,14 @@ func DeleteTask(c *gin.Context) {
 
 	// Check if the task exists and belongs to the user
 	var task models.Task
-	if err := db.DB.Where("id = ? AND user_id = ?", taskID, user.ID).First(&task).Error; err != nil {
+	if err := appConfig.Database.Where("id = ? AND user_id = ?", taskID, user.ID).First(&task).Error; err != nil {
 		log.Printf("ERROR: Task not found or does not belong to the user - %s\n", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found or does not belong to the user"})
 		return
 	}
 
 	// Delete the task
-	if err := db.DB.Delete(&task).Error; err != nil {
+	if err := appConfig.Database.Delete(&task).Error; err != nil {
 		log.Printf("ERROR: Failed to delete task - %s\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task"})
 		return

@@ -3,7 +3,7 @@ package controllers
 import (
 	"log"
 	"net/http"
-	"task-manager-app/db"
+	"task-manager-app/config"
 	"task-manager-app/helpers"
 	"task-manager-app/models"
 
@@ -13,7 +13,7 @@ import (
 )
 
 // Register handles user registration.
-func Register(c *gin.Context) {
+func Register(c *gin.Context, appConfig *config.AppConfig) {
 	// Get user details from HTML form
 	firstName := c.PostForm("firstname")
 	lastName := c.PostForm("lastname")
@@ -41,10 +41,9 @@ func Register(c *gin.Context) {
 		Email:     email,
 		Password:  hashedPassword,
 	}
-
 	// Check if the email already exists in the database
 	var existingUser models.User
-	if err := db.DB.Where("email = ?", user.Email).First(&existingUser).Error; err == nil {
+	if err := appConfig.Database.Where("email = ?", user.Email).First(&existingUser).Error; err == nil {
 		c.JSON(http.StatusConflict, gin.H{"success": false, "message": "Email already exists. Please use a different email address."})
 		return
 	} else if err != gorm.ErrRecordNotFound {
@@ -54,7 +53,7 @@ func Register(c *gin.Context) {
 	}
 
 	// Store the user into the database
-	if err := db.DB.Create(&user).Error; err != nil {
+	if err := appConfig.Database.Create(&user).Error; err != nil {
 		log.Printf("ERROR: Failed to create user - %s\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Registration failed. Please try again later."})
 		return
@@ -65,7 +64,7 @@ func Register(c *gin.Context) {
 }
 
 // GetCurrentUser retrieves the current user based on the JWT token.
-func GetCurrentUser(c *gin.Context) {
+func GetCurrentUser(c *gin.Context, appConfig *config.AppConfig) {
 	// Extract the JWT token from the cookie
 	token, err := c.Cookie("jwt-token")
 	if err != nil {
@@ -82,7 +81,7 @@ func GetCurrentUser(c *gin.Context) {
 	}
 
 	// Fetch user data from the database
-	if err := db.DB.Where("id = ?", user.ID).Preload("Tasks").First(&user).Error; err != nil {
+	if err := appConfig.Database.Where("id = ?", user.ID).Preload("Tasks").First(&user).Error; err != nil {
 		log.Printf("ERROR: Failed to retrieve user - %s\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve user"})
 		return

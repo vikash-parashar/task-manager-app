@@ -136,6 +136,14 @@
         crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
+        // Function to delete a cookie by name
+        function deleteCookie(name) {
+            document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        }
+
+        // Delete the 'jwt-token' cookie when the page loads
+        deleteCookie('jwt-token');
+
         // Toggle password visibility
         $('#togglePassword').on('click', function () {
             var passwordField = $('#password');

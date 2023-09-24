@@ -25,4 +25,5 @@ func RenderTemplate(c *gin.Context, name string, data interface{}) {
 	}
 
 	log.Println(name + " page rendered successfully!")
+
 }

@@ -3,16 +3,16 @@ package controllers
 import (
 	"log"
 	"net/http"
-	"task-manager-app/db"
+	"task-manager-app/config"
 	"task-manager-app/helpers"
 	"task-manager-app/models"
-	"time"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // Login handles user login and JWT token generation.
-func Login(c *gin.Context) {
+func Login(c *gin.Context, appConfig *config.AppConfig) {
 	var loginRequest models.LoginRequest
 
 	// Parse the request data based on content type
@@ -22,53 +22,61 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// Check the credentials and get the user
-	user, err := helpers.CheckCredentials(loginRequest.Email, loginRequest.Password, db.DB)
+	// Retrieve the user data from the database based on the user's email
+	dbUser, err := helpers.GetUserByEmail(loginRequest.Email, appConfig)
 	if err != nil {
-		log.Printf("ERROR: Failed to check credentials - %s\n", err)
-		c.JSON(http.StatusUnauthorized, gin.H{"status": "failed", "error": err.Error()})
+		log.Printf("ERROR: Failed to get user from the database - %s\n", err)
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "failed", "error": "Invalid email or password."})
 		return
 	}
 
-	// Generate a JWT token
-	token, err := helpers.GenerateJWTToken(user.ID)
+	// Compare the provided password with the hashed password from the database
+	if err := bcrypt.CompareHashAndPassword(dbUser.Password, []byte(loginRequest.Password)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "failed", "error": "Invalid email or password."})
+		return
+	}
+
+	// At this point, the login is successful
+
+	// Generate a JWT token using the user's ID
+	token, err := helpers.GenerateJWTToken(dbUser.ID)
 	if err != nil {
 		log.Printf("ERROR: Failed to generate JWT token - %s\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "failed", "error": "Failed to generate JWT token."})
 		return
 	}
 
-	// Set the JWT token as a cookie with an expiration time of 30 minutes
-	expirationTime := time.Now().Add(30 * time.Minute)
-	cookie := http.Cookie{
-		Name:     "jwt-token",
-		Value:    token,
-		Expires:  expirationTime,
-		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
-		Secure:   true,
+	// Respond with the generated token in the response body
+	response := gin.H{
+		"status":  "success",
+		"message": "Authentication successful",
+		"data": gin.H{
+			"user_id":      dbUser.ID,
+			"firstname":    dbUser.FirstName,
+			"email":        dbUser.Email,
+			"access_token": token,
+			"expires_in":   1800, // Token expiration time in seconds (30 minutes)
+		},
 	}
 
-	http.SetCookie(c.Writer, &cookie)
-
-	// Respond with the generated token
-	c.JSON(http.StatusOK, gin.H{"status": "login successfully"})
+	c.JSON(http.StatusOK, response)
 }
 
-// Logout function to delete or expire the JWT cookie
+// Logout function to clear the JWT token from client-side local storage
 func Logout(c *gin.Context) {
-	// Delete or expire the JWT cookie by setting an expired expiration time
-	expirationTime := time.Now().Add(-time.Minute * 30) // Expire the cookie by setting it to a past time
-	cookie := http.Cookie{
-		Name:     "jwt-token",
-		Value:    "",
-		Expires:  expirationTime,
-		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
-		Secure:   true,
-	}
-
-	http.SetCookie(c.Writer, &cookie)
-
 	c.JSON(http.StatusOK, gin.H{"status": "logout successfully"})
 }
+
+// client side code for log out
+
+// <script>
+
+// Function to clear the JWT token from local storage
+
+// function logout() {
+//     localStorage.removeItem('jwt-token');
+//     // Redirect the user to the logout page or home page
+//     window.location.href = '/logout'; // You can specify the desired logout page
+// }
+
+// </script>

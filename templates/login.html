@@ -11,31 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Jost&family=Urbanist:wght@500&display=swap" rel="stylesheet">
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background: linear-gradient(to bottom, #52042e, #3cd6e7);
-            color: #fdfdfd;
-            /* Text color on the gradient background */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            /* Ensure the background covers the entire viewport */
-            font-family: 'Jost', sans-serif;
-            font-family: 'Urbanist', sans-serif;
-        }
-
-        a {
-            text-decoration: none;
-            color: rgb(254, 254, 254);
-        }
-
-        .ad {
-            color: #b01450;
-        }
-    </style>
+    <link rel="stylesheet" href="../static/css/login.css">
 </head>
 
 <body>
@@ -70,7 +46,6 @@
                         </div>
                     </div>
 
-
                     <button type="submit" class="btn btn-primary">Login</button>
                 </form>
 
@@ -84,19 +59,27 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
     <script>
+        // Function to delete a cookie by name
+        function deleteCookie(name) {
+            document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        }
+    
+        // Delete the 'jwt-token' cookie when the page loads
+        deleteCookie('jwt-token');
+    
         $(document).ready(function () {
             // Event delegation for password toggle button
             $('#loginForm').on('click', '#togglePassword', function () {
                 togglePasswordVisibility();
             });
-
+    
             // Event delegation for form submission
             $('#loginForm').on('submit', function (event) {
                 event.preventDefault(); // Prevent the default form submission
                 handleLoginFormSubmission(this);
             });
         });
-
+    
         function togglePasswordVisibility() {
             var passwordField = $('#password');
             var passwordFieldType = passwordField.attr('type');
@@ -108,56 +91,76 @@
                 $('#togglePassword').html('<i class="bi bi-eye"><img src="../static/images/view.png" alt="img" style="width: 20px;background-color: aliceblue;"></i>'); // Change back to an eye icon
             }
         }
-
+    
+        // Add a variable to track if a submission is in progress
+        var isSubmitting = false;
+    
         function handleLoginFormSubmission(form) {
-            var email = $('#email').val();
-            var password = $('#password').val();
-
-            // Check if email and password are not empty
-            if (!email || !password) {
-                alert('Please enter both email and password.');
+            // Check if a submission is already in progress
+            if (isSubmitting) {
                 return;
             }
-
+    
+            isSubmitting = true;
+    
+            var email = $('#email').val();
+            var password = $('#password').val();
+    
+            // Check if email and password are not empty
+            if (!email) {
+                alert('Please Enter Email !');
+                isSubmitting = false; // Reset the flag
+                return;
+            }
+    
+            // Check if email and password are not empty
+            if (!password) {
+                alert('Please Enter Password !');
+                isSubmitting = false; // Reset the flag
+                return;
+            }
+    
             // Prepare the data to be sent to the API
             var data = {
                 email: email,
                 password: password,
             };
-
-            // Send a POST request to the Golang backend API
-            $.ajax({
-                type: 'POST',
-                url: '/login', // Update the URL to match your API endpoint
-                data: JSON.stringify(data),
-                contentType: 'application/json',
-                success: function (response) {
-                    if (response.token) {
-                        // Save the token in local storage
-                        localStorage.setItem('token', response.token);
-
-                        // Check if the token exists and is not empty
-                        if (response.token !== "") {
-                            // Append the token as a query parameter and redirect to /todo
-                            window.location.href = "http://localhost:8080/todo?token=" + response.token;
-                        } else {
-                            // Redirect to /home if the token is empty
-                            window.location.href = "http://localhost:8080/";
-                        }
-                    } else {
-                        // Redirect to /home if there is no token
-                        window.location.href = "http://localhost:8080/";
-                    }
+    
+            // Send a POST request to the Golang backend API for login
+            fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
                 },
-                error: function () {
-                    alert('An error occurred while processing your request.');
-                }
-            });
+                body: JSON.stringify(data),
+            })
+                .then((response) => response.json())
+                .then((response) => {
+                    if (response.status === 'success') {
+                        // Extract user data and token from the response
+                        var userData = response.data;
+                        var token = userData.access_token;
+    
+                        // Set the JWT token in local storage
+                        localStorage.setItem('jwt-token', token);
+    
+                        // Redirect to '/todo'
+                        window.location.href = '/todo';
+                    } else {
+                        // Handle authentication failure, e.g., show an error message
+                        alert('Authentication failed: ' + response.error);
+                    }
+                })
+                .catch(() => {
+                    // Handle error for the login POST request
+                    alert('An error occurred while processing your login request.');
+                })
+                .finally(() => {
+                    isSubmitting = false; // Reset the flag regardless of success or failure
+                });
         }
-
     </script>
-
-
+    
 </body>
 
 </html>
