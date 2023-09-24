@@ -1,9 +1,9 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
+	"task-manager-app/helpers"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
@@ -17,8 +17,13 @@ func AuthMiddleware() gin.HandlerFunc {
 		tokenString := c.GetHeader("Authorization")
 
 		// Check if the token is missing or doesn't start with "Bearer "
-		if tokenString == "" || !strings.HasPrefix(tokenString, "Bearer ") {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or missing token"})
+		if tokenString == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
+			c.Abort()
+			return
+		}
+		if !strings.HasPrefix(tokenString, "Bearer ") {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 			c.Abort()
 			return
 		}
@@ -26,17 +31,8 @@ func AuthMiddleware() gin.HandlerFunc {
 		// Extract the token without the "Bearer " prefix
 		tokenString = strings.TrimPrefix(tokenString, "Bearer ")
 
-		// Parse and validate the JWT token
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			// Validate the signing method and provide the key used for signing
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("Invalid signing method")
-			}
-			// Replace "your-secret-key" with your actual secret key
-			return []byte("your-secret-key"), nil
-		})
-
-		if err != nil || !token.Valid {
+		token, isValid := helpers.IsValidToken(tokenString)
+		if isValid != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			c.Abort()
 			return

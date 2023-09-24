@@ -50,13 +50,15 @@ func TodoPage(c *gin.Context) {
 	// Extract the token without the "Bearer " prefix
 	tokenString = strings.TrimPrefix(tokenString, "Bearer ")
 
-	if !helpers.IsValidToken(tokenString) {
+	_, isValid := helpers.IsValidToken(tokenString)
+	if isValid != nil {
 		c.Redirect(http.StatusSeeOther, "/")
 		return
 	}
+	c.Header("Content-Type", "text/html")
 
 	// Token is valid, render the HTML page using the template cache
-	render.RenderTemplate(c, "todo", nil)
+	render.RenderTemplate(c, "todo", gin.H{"token": tokenString})
 }
 
 // RegisterPage renders the register page.

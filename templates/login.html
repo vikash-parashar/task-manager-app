@@ -38,7 +38,7 @@
                             <button class="btn btn-outline-secondary" type="button" id="togglePassword"
                                 style="background-color: rgb(255, 255, 255);border-color:#dee2e6;border: 0.800rem;">
                                 <i class="bi bi-eye"><img src="../static/images/view.png" alt="img"
-                                        style="width: 20px;background-color: rgb(255, 255, 255);"></a></i><!-- Add an eye icon for visibility toggle -->
+                                        style="width: 20px;background-color: rgb(255, 255, 255);"></i><!-- Add an eye icon for visibility toggle -->
                             </button>
                         </div>
                         <div class="invalid-feedback">
@@ -59,27 +59,25 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
     <script>
-        // Function to delete a cookie by name
-        function deleteCookie(name) {
-            document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+
+        // Function to delete a token from local storage
+        function deleteAccessToken() {
+            localStorage.removeItem('access_token');
         }
-    
-        // Delete the 'jwt-token' cookie when the page loads
-        deleteCookie('jwt-token');
-    
+        deleteAccessToken()
         $(document).ready(function () {
             // Event delegation for password toggle button
             $('#loginForm').on('click', '#togglePassword', function () {
                 togglePasswordVisibility();
             });
-    
+
             // Event delegation for form submission
             $('#loginForm').on('submit', function (event) {
                 event.preventDefault(); // Prevent the default form submission
                 handleLoginFormSubmission(this);
             });
         });
-    
+
         function togglePasswordVisibility() {
             var passwordField = $('#password');
             var passwordFieldType = passwordField.attr('type');
@@ -91,41 +89,41 @@
                 $('#togglePassword').html('<i class="bi bi-eye"><img src="../static/images/view.png" alt="img" style="width: 20px;background-color: aliceblue;"></i>'); // Change back to an eye icon
             }
         }
-    
+
         // Add a variable to track if a submission is in progress
         var isSubmitting = false;
-    
+
         function handleLoginFormSubmission(form) {
             // Check if a submission is already in progress
             if (isSubmitting) {
                 return;
             }
-    
+
             isSubmitting = true;
-    
+
             var email = $('#email').val();
             var password = $('#password').val();
-    
+
             // Check if email and password are not empty
             if (!email) {
                 alert('Please Enter Email !');
                 isSubmitting = false; // Reset the flag
                 return;
             }
-    
+
             // Check if email and password are not empty
             if (!password) {
                 alert('Please Enter Password !');
                 isSubmitting = false; // Reset the flag
                 return;
             }
-    
+
             // Prepare the data to be sent to the API
             var data = {
                 email: email,
                 password: password,
             };
-    
+
             // Send a POST request to the Golang backend API for login
             fetch('/login', {
                 method: 'POST',
@@ -134,33 +132,43 @@
                 },
                 body: JSON.stringify(data),
             })
-                .then((response) => response.json())
                 .then((response) => {
-                    if (response.status === 'success') {
-                        // Extract user data and token from the response
-                        var userData = response.data;
-                        var token = userData.access_token;
-    
-                        // Set the JWT token in local storage
-                        localStorage.setItem('jwt-token', token);
-    
-                        // Redirect to '/todo'
-                        window.location.href = '/todo';
-                    } else {
-                        // Handle authentication failure, e.g., show an error message
-                        alert('Authentication failed: ' + response.error);
+                    if (response.status === 200) {
+                        return response.json(); // Parse the JSON from the response
                     }
                 })
-                .catch(() => {
-                    // Handle error for the login POST request
-                    alert('An error occurred while processing your login request.');
+                .then((jsonResponse) => {
+                    if (jsonResponse.status === 'success') {
+                        // Store the access token in local storage
+                        localStorage.setItem('access_token', jsonResponse.data.access_token);
+
+                        fetch('/todo', {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${jsonResponse.data.access_token}`, // Set the auth header
+                            },
+                        })
+                            .then((response) => {
+                                return response.text(); // Parse the text (HTML) from the response
+                            })
+                            .then((htmlResponse) => {
+                                // Replace the entire body's HTML with the fetched HTML
+                                $('body').html(htmlResponse);
+                            });
+                    }
+                })
+                .catch((error) => {
+                    // Handle authentication failure or other errors
+                    alert('Authentication failed: ' + error.message);
                 })
                 .finally(() => {
                     isSubmitting = false; // Reset the flag regardless of success or failure
                 });
         }
+
+
     </script>
-    
+
 </body>
 
 </html>

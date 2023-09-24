@@ -66,17 +66,3 @@ func Login(c *gin.Context, appConfig *config.AppConfig) {
 func Logout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "logout successfully"})
 }
-
-// client side code for log out
-
-// <script>
-
-// Function to clear the JWT token from local storage
-
-// function logout() {
-//     localStorage.removeItem('jwt-token');
-//     // Redirect the user to the logout page or home page
-//     window.location.href = '/logout'; // You can specify the desired logout page
-// }
-
-// </script>

@@ -155,19 +155,25 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
     <script>
+
+
+
         // Function to fetch and display tasks
         function fetchAndDisplayTasks() {
             // Make an AJAX GET request to your Golang backend API endpoint
             $.ajax({
                 url: '/tasks', // Replace with your API endpoint URL
                 method: 'GET',
+                headers: {
+                            'Authorization': 'Bearer ' + Token
+                        },
                 dataType: 'json', // Expect JSON response
                 success: function (data) {
                     // Check if data was received successfully
                     if (data && data.length > 0) {
                         // Clear the table body
                         $('#taskTable tbody').empty();
-    
+
                         // Loop through the received data and populate the table
                         for (let i = 0; i < data.length; i++) {
                             const task = data[i];
@@ -197,16 +203,79 @@
                 }
             });
         }
-    
+
         // Attach a click event handler to the "Get all tasks" button
         $('#getTasksBtn').on('click', function () {
             fetchAndDisplayTasks();
         });
-    
+
         // Initial fetch of tasks when the page loads
         fetchAndDisplayTasks();
+        // Function to update task status
+        function updateTaskStatus(taskId, newStatus) {
+            // Make an AJAX PUT request to update the task's status
+            $.ajax({
+                url: `/tasks/${taskId}/status`,
+                method: 'PUT',
+                headers: {
+                            'Authorization': 'Bearer ' + Token
+                        },
+                data: JSON.stringify({ status: newStatus }),
+                contentType: 'application/json',
+                success: function (data) {
+                    // Handle success (e.g., display a message)
+                    console.log('Task status updated successfully');
+                    fetchAndDisplayTasks(); // Refresh the task list
+                },
+                error: function (error) {
+                    // Handle error (e.g., display an error message)
+                    console.error('Error updating task status:', error);
+                }
+            });
+        }
+
+        // Function to update task priority
+        function updateTaskPriority(taskId, newPriority) {
+            // Make an AJAX PUT request to update the task's priority
+            $.ajax({
+                url: `/tasks/${taskId}/priority`,
+                method: 'PUT',
+                headers: {
+                            'Authorization': 'Bearer ' + Token
+                        },
+                data: JSON.stringify({ priority: newPriority }),
+                contentType: 'application/json',
+                success: function (data) {
+                    // Handle success (e.g., display a message)
+                    console.log('Task priority updated successfully');
+                    fetchAndDisplayTasks(); // Refresh the task list
+                },
+                error: function (error) {
+                    // Handle error (e.g., display an error message)
+                    console.error('Error updating task priority:', error);
+                }
+            });
+        }
+
+        // Attach event handlers to update buttons (inside your fetchAndDisplayTasks function)
+        $('#taskTable').on('click', '.btn-update-status', function () {
+            const taskId = $(this).data('task-id');
+            const newStatus = prompt('Enter new status:'); // You can use a modal or other input method
+            if (newStatus !== null) {
+                updateTaskStatus(taskId, newStatus);
+            }
+        });
+
+        $('#taskTable').on('click', '.btn-update-priority', function () {
+            const taskId = $(this).data('task-id');
+            const newPriority = prompt('Enter new priority:'); // You can use a modal or other input method
+            if (newPriority !== null) {
+                updateTaskPriority(taskId, newPriority);
+            }
+        });
+
     </script>
-    
+
 </body>
 
 

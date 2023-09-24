@@ -140,7 +140,7 @@ func GenerateJWTToken(userID uuid.UUID) (string, error) {
 
 	return tokenString, nil
 }
-func IsValidToken(tokenString string) bool {
+func IsValidToken(tokenString string) (*jwt.Token, error) {
 	// Parse the JWT token with the secret key
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		// Check the signing method
@@ -150,15 +150,15 @@ func IsValidToken(tokenString string) bool {
 		return []byte(os.Getenv("JWT_SECRET")), nil
 	})
 	if err != nil {
-		return false
+		return nil, err // Return the parsing error for further diagnosis.
 	}
 
 	// Validate the token
 	if !token.Valid {
-		return false
+		return nil, fmt.Errorf("invalid token")
 	}
 
-	return true
+	return token, nil
 }
 
 // getUserByEmail retrieves a user by their email address.
